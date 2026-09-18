@@ -1,13 +1,572 @@
-const KEY='rex_customers';let data=JSON.parse(localStorage.getItem(KEY)||'[]');
-const $=id=>document.getElementById(id), money=n=>new Intl.NumberFormat('en-NG',{style:'currency',currency:'NGN',maximumFractionDigits:0}).format(Number(n)||0);
-function save(){localStorage.setItem(KEY,JSON.stringify(data))}
-function show(id){['home','customer','admin'].forEach(x=>$(x).classList.add('hidden'));$(id).classList.remove('hidden');if(id==='admin')render();scrollTo(0,0)}
-function resetForm(){$('form').reset();$('fstart').value=new Date().toISOString().slice(0,10)}
-$('form').onsubmit=e=>{e.preventDefault();let code=$('fcode').value.trim().toUpperCase(),old=data.find(x=>x.code===code);let c={code,name:$('fname').value.trim(),phone:$('fphone').value.trim(),product:$('fproduct').value.trim(),total:+$('ftotal').value,install:+$('finstall').value||0,freq:$('freq').value,start:$('fstart').value,image:$('fimage').value.trim(),account:$('faccount').value.trim(),notes:$('fnotes').value.trim(),paid:old?.paid||0};let i=data.findIndex(x=>x.code===code);i>=0?data[i]=c:data.push(c);save();render();alert('Customer saved.');resetForm()};
-function addPayment(code){let c=data.find(x=>x.code===code),bal=c.total-c.paid,n=prompt('Amount received from '+c.name+'\nCurrent balance: '+money(bal));if(n===null)return;n=+n;if(!n||n<0)return alert('Enter a valid amount.');c.paid=Math.min(c.total,c.paid+n);save();render();alert('Payment recorded. New balance: '+money(c.total-c.paid))}
-function edit(code){let c=data.find(x=>x.code===code);['code','name','phone','product','total','install','freq','start','image','account','notes'].forEach(k=>{let id='f'+k;if($(id))$(id).value=c[k]??''});show('admin')}
-function del(code){if(confirm('Delete this customer?')){data=data.filter(x=>x.code!==code);save();render()}}
-function render(){let paid=data.reduce((a,c)=>a+c.paid,0),out=data.reduce((a,c)=>a+Math.max(0,c.total-c.paid),0);$('count').textContent=data.length;$('collected').textContent=money(paid);$('outstanding').textContent=money(out);$('list').innerHTML=data.length?data.map(c=>`<div class="row"><div><b>${esc(c.name)}</b><br><small>${esc(c.code)} • ${esc(c.product)} • Balance ${money(c.total-c.paid)}</small></div><div><button onclick="addPayment('${c.code}')">Add payment</button> <button onclick="edit('${c.code}')">Edit</button> <button onclick="del('${c.code}')">Delete</button></div></div>`).join(''):'<p>No customers yet.</p>'}
-function lookup(){let code=$('code').value.trim().toUpperCase(),c=data.find(x=>x.code===code);if(!c)return $('result').innerHTML='<div class="card"><b>Customer not found.</b><p>Please check the code sent by REX SMART HUB.</p></div>';let bal=Math.max(0,c.total-c.paid),pct=c.total?Math.round(c.paid/c.total*100):0;$('result').innerHTML=`<div class="card">${c.image?`<img src="${esc(c.image)}" style="width:100%;max-height:260px;object-fit:cover;border-radius:10px">`:''}<p>REX SMART HUB</p><h2>${esc(c.product)}</h2><p>Customer: <b>${esc(c.name)}</b></p><div class="balance"><div class="money"><small>Total</small><b>${money(c.total)}</b></div><div class="money"><small>Paid</small><b>${money(c.paid)}</b></div><div class="money"><small>Remaining</small><b>${money(bal)}</b></div></div><div class="progress"><div style="width:${pct}%"></div></div><b>${pct}% paid</b> ${bal===0?'— ✅ FULLY PAID':'— Balance outstanding'}<p><b>Installment:</b> ${money(c.install)} ${esc(c.freq)}</p>${c.account?`<div class="account"><b>PAYMENT ACCOUNT</b><br><br>${esc(c.account)}</div>`:''}${c.notes?`<p>${esc(c.notes)}</p>`:''}</div>`}
-function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
-resetForm();render();
+/* =========================================================
+   REX SMART HUB — PAY SMALL SMALL
+   Supabase-powered customer + owner system
+   ========================================================= */
+
+const SUPABASE_URL = "https://wmfpgetondvnoeugptoh.supabase.co";
+const SUPABASE_KEY = "sb_publishable_hoSilSnRHkgDyuMKM0ryOw_wOYNM3gM";
+
+let sb = null;
+let currentUser = null;
+let currentRole = null;
+
+/* ---------- Load Supabase ---------- */
+
+function loadSupabase() {
+  return new Promise((resolve, reject) => {
+    if (window.supabase) {
+      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      resolve();
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+    script.onload = () => {
+      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      resolve();
+    };
+    script.onerror = () => reject(new Error("Could not load Supabase."));
+    document.head.appendChild(script);
+  });
+}
+
+/* ---------- Basic helpers ---------- */
+
+function money(value) {
+  return "₦" + Number(value || 0).toLocaleString("en-NG", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  });
+}
+
+function esc(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function showMessage(message, type = "info") {
+  let box = document.getElementById("rexMessage");
+
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "rexMessage";
+    box.style.cssText =
+      "position:fixed;top:15px;left:50%;transform:translateX(-50%);" +
+      "z-index:99999;width:92%;max-width:500px;padding:14px 16px;" +
+      "border-radius:12px;background:#111827;color:white;text-align:center;" +
+      "font-size:14px;box-shadow:0 8px 30px rgba(0,0,0,.25)";
+    document.body.appendChild(box);
+  }
+
+  box.textContent = message;
+
+  if (type === "error") {
+    box.style.background = "#b91c1c";
+  } else if (type === "success") {
+    box.style.background = "#15803d";
+  } else {
+    box.style.background = "#111827";
+  }
+
+  clearTimeout(box._timer);
+  box._timer = setTimeout(() => box.remove(), 5000);
+}
+
+function section(id) {
+  return document.getElementById(id);
+}
+
+/* ---------- Navigation ---------- */
+
+window.showSection = function(id) {
+  document.querySelectorAll("section").forEach(s => {
+    s.style.display = "none";
+  });
+
+  const target = section(id);
+
+  if (target) {
+    target.style.display = "block";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  if (id === "login") buildLogin();
+  if (id === "signup") buildSignup();
+  if (id === "ownerLogin") buildOwnerLogin();
+};
+
+/* ---------- Create application area ---------- */
+
+function createAppArea() {
+  let app = document.getElementById("rexSecureApp");
+
+  if (!app) {
+    app = document.createElement("section");
+    app.id = "rexSecureApp";
+    app.style.display = "none";
+    app.innerHTML = `
+      <div style="
+        max-width:1000px;
+        margin:20px auto;
+        padding:20px;
+      ">
+        <div id="rexSecureContent"></div>
+      </div>
+    `;
+
+    document.body.appendChild(app);
+  }
+
+  return app;
+}
+
+function openSecureArea(html) {
+  const app = createAppArea();
+
+  document.querySelectorAll("section").forEach(s => {
+    if (s.id !== "rexSecureApp") s.style.display = "none";
+  });
+
+  app.style.display = "block";
+  document.getElementById("rexSecureContent").innerHTML = html;
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/* ---------- Signup ---------- */
+
+function buildSignup() {
+  const old = section("signup");
+  if (!old) return;
+
+  const form = section("signupForm");
+
+  if (!form) return;
+
+  form.onsubmit = async function(e) {
+    e.preventDefault();
+
+    const name =
+      document.getElementById("signupName")?.value.trim() || "";
+
+    const phone =
+      document.getElementById("signupPhone")?.value.trim() || "";
+
+    const email =
+      document.getElementById("signupEmail")?.value.trim() || "";
+
+    const password =
+      document.getElementById("signupPassword")?.value || "";
+
+    const confirm =
+      document.getElementById("signupConfirmPassword")?.value ||
+      document.getElementById("signupConfirm")?.value ||
+      "";
+
+    if (!name || !phone || !email || !password) {
+      showMessage("Please fill all required fields.", "error");
+      return;
+    }
+
+    if (confirm && password !== confirm) {
+      showMessage("Passwords do not match.", "error");
+      return;
+    }
+
+    if (password.length < 8) {
+      showMessage("Password must be at least 8 characters.", "error");
+      return;
+    }
+
+    showMessage("Creating your account...");
+
+    try {
+      const { data, error } = await sb.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo:
+            "https://rextech026-beep.github.io/rex-smart-hub-pay-small-small/",
+          data: {
+            full_name: name,
+            phone: phone,
+            role: "customer"
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      if (!data.user) {
+        throw new Error("Account could not be created.");
+      }
+
+      /*
+        Customer profile is created after email verification/login.
+        This avoids putting unverified accounts into the live customer
+        records.
+      */
+
+      showMessage(
+        "Account created. Check your email and confirm your account before logging in.",
+        "success"
+      );
+
+      setTimeout(() => {
+        showSection("login");
+      }, 1800);
+
+    } catch (err) {
+      showMessage(err.message || "Signup failed.", "error");
+    }
+  };
+}
+
+/* ---------- Login ---------- */
+
+function buildLogin() {
+  const old = section("login");
+  if (!old) return;
+
+  const form = old.querySelector("form");
+
+  if (!form) return;
+
+  form.onsubmit = async function(e) {
+    e.preventDefault();
+
+    const inputs = [...form.querySelectorAll("input")];
+
+    const identifier =
+      inputs.find(i =>
+        ["email", "text", "tel"].includes(i.type)
+      )?.value.trim() || "";
+
+    const password =
+      inputs.find(i => i.type === "password")?.value || "";
+
+    if (!identifier || !password) {
+      showMessage("Enter your email/phone and password.", "error");
+      return;
+    }
+
+    /*
+      Free Supabase setup:
+      Email/password login is enabled.
+      Phone password login requires Supabase phone auth/SMS setup.
+    */
+
+    if (!identifier.includes("@")) {
+      showMessage(
+        "Phone login will be added when SMS authentication is enabled. For now, use your registered email.",
+        "error"
+      );
+      return;
+    }
+
+    await loginUser(identifier, password, false);
+  };
+}
+
+/* ---------- Owner Login ---------- */
+
+function buildOwnerLogin() {
+  const old = section("ownerLogin");
+  if (!old) return;
+
+  const form = old.querySelector("form");
+
+  if (!form) return;
+
+  form.onsubmit = async function(e) {
+    e.preventDefault();
+
+    const inputs = [...form.querySelectorAll("input")];
+
+    const email =
+      inputs.find(i => i.type === "email" || i.type === "text")
+        ?.value.trim() || "";
+
+    const password =
+      inputs.find(i => i.type === "password")?.value || "";
+
+    if (!email || !password) {
+      showMessage("Enter owner email and password.", "error");
+      return;
+    }
+
+    await loginUser(email, password, true);
+  };
+}
+
+/* ---------- Login engine ---------- */
+
+async function loginUser(email, password, ownerLogin) {
+  showMessage("Signing in...");
+
+  try {
+    const { data, error } =
+      await sb.auth.signInWithPassword({
+        email,
+        password
+      });
+
+    if (error) throw error;
+
+    currentUser = data.user;
+
+    /*
+      Check whether this user has MFA configured.
+    */
+
+    const { data: aalData, error: aalError } =
+      await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+
+    if (aalError) throw aalError;
+
+    if (
+      aalData &&
+      aalData.nextLevel === "aal2" &&
+      aalData.currentLevel !== "aal2"
+    ) {
+      await showMFAChallenge(ownerLogin);
+      return;
+    }
+
+    await finishLogin(ownerLogin);
+
+  } catch (err) {
+    showMessage(err.message || "Login failed.", "error");
+  }
+}
+
+/* ---------- MFA challenge ---------- */
+
+async function showMFAChallenge(ownerLogin) {
+  const { data, error } =
+    await sb.auth.mfa.listFactors();
+
+  if (error) {
+    showMessage(error.message, "error");
+    return;
+  }
+
+  const factor =
+    data.totp?.find(f => f.status === "verified");
+
+  if (!factor) {
+    await finishLogin(ownerLogin);
+    return;
+  }
+
+  openSecureArea(`
+    <div style="
+      max-width:430px;
+      margin:40px auto;
+      background:white;
+      padding:25px;
+      border-radius:18px;
+      box-shadow:0 5px 25px rgba(0,0,0,.12);
+    ">
+      <h2>🔐 Security Verification</h2>
+      <p>Open your authenticator app and enter the 6-digit code.</p>
+
+      <input
+        id="mfaCode"
+        inputmode="numeric"
+        maxlength="6"
+        placeholder="6-digit code"
+        style="
+          width:100%;
+          padding:14px;
+          margin:15px 0;
+          font-size:20px;
+          text-align:center;
+          box-sizing:border-box;
+        "
+      >
+
+      <button id="mfaVerifyBtn" style="
+        width:100%;
+        padding:14px;
+        border:0;
+        border-radius:10px;
+        background:#111827;
+        color:white;
+        font-size:16px;
+      ">
+        Verify
+      </button>
+
+      <button id="mfaCancelBtn" style="
+        width:100%;
+        padding:12px;
+        margin-top:10px;
+        border:0;
+        background:#eee;
+        border-radius:10px;
+      ">
+        Cancel
+      </button>
+    </div>
+  `);
+
+  document.getElementById("mfaVerifyBtn").onclick =
+    async function() {
+
+      const code =
+        document.getElementById("mfaCode").value.trim();
+
+      if (!/^\d{6}$/.test(code)) {
+        showMessage("Enter the 6-digit code.", "error");
+        return;
+      }
+
+      showMessage("Verifying...");
+
+      try {
+        const { data: challenge, error: challengeError } =
+          await sb.auth.mfa.challenge({
+            factorId: factor.id
+          });
+
+        if (challengeError) throw challengeError;
+
+        const { error: verifyError } =
+          await sb.auth.mfa.verify({
+            factorId: factor.id,
+            challengeId: challenge.id,
+            code
+          });
+
+        if (verifyError) throw verifyError;
+
+        await finishLogin(ownerLogin);
+
+      } catch (err) {
+        showMessage(
+          err.message || "Invalid verification code.",
+          "error"
+        );
+      }
+    };
+
+  document.getElementById("mfaCancelBtn").onclick =
+    async function() {
+      await sb.auth.signOut();
+      location.reload();
+    };
+}
+
+/* ---------- Finish login ---------- */
+
+async function finishLogin(ownerLogin) {
+  const { data: userData } = await sb.auth.getUser();
+
+  if (!userData?.user) {
+    throw new Error("Session not found.");
+  }
+
+  currentUser = userData.user;
+
+  /*
+    Get role from secure database.
+  */
+
+  const { data: appUser, error } =
+    await sb
+      .from("app_users")
+      .select("id, role")
+      .eq("id", currentUser.id)
+      .maybeSingle();
+
+  if (error) {
+    showMessage(error.message, "error");
+    return;
+  }
+
+  currentRole = appUser?.role || "customer";
+
+  if (ownerLogin && currentRole !== "owner") {
+    await sb.auth.signOut();
+    showMessage(
+      "This account is not an owner account.",
+      "error"
+    );
+    return;
+  }
+
+  if (!ownerLogin && currentRole === "owner") {
+    await sb.auth.signOut();
+    showMessage(
+      "Owner account detected. Use Owner Login.",
+      "error"
+    );
+    return;
+  }
+
+  if (currentRole === "owner") {
+    await showOwnerDashboard();
+  } else {
+    await ensureCustomerProfile();
+    await showCustomerDashboard();
+  }
+}
+
+/* ---------- Customer profile ---------- */
+
+async function ensureCustomerProfile() {
+  if (!currentUser) return;
+
+  const { data: existing, error } =
+    await sb
+      .from("customer_accounts")
+      .select("*")
+      .eq("user_id", currentUser.id)
+      .maybeSingle();
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  if (existing) return;
+
+  const meta = currentUser.user_metadata || {};
+
+  await sb.from("customer_accounts").insert({
+    user_id: currentUser.id,
+    full_name: meta.full_name || "",
+    phone_text: meta.phone || "",
+    email: currentUser.email || ""
+  });
+}
+
+/* ---------- Customer dashboard ---------- */
+
+async function showCustomerDashboard() {
+  await ensureCustomerProfile();
+
+  const { data: customer, error } =
+    await sb
+      .from("customer_accounts")
+      .select("*")
+      .eq("user_id", currentUser.id)
+      .single();
+
+  if (error) {
+    showMessage(error.message, "error");
+    return;
+  }
+
+  const { data: agreements, error: agreementError } =
+    await sb
+      .from("installment_agreements")
+      .select("*")
+      .eq("customer_id", customer.id)
+      .order("created_at", { ascending
