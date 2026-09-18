@@ -1,51 +1,376 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>REX SMART HUB — Pay Small Small</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>REX SMART HUB — PAY SMALL SMALL</title>
 <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
-<header><div><b>⚡ REX SMART HUB</b><small>PAY SMALL SMALL</small></div><button onclick="show('admin')">Owner Dashboard</button></header>
-<main>
-<section id="home">
-<p>REXORA GROUP</p><h1>Get it now.<br><span>Pay small small.</span></h1>
-<p class="lead">Check your product, payment progress and remaining balance from your payment page.</p>
-<button class="primary" onclick="show('customer')">Check My Payment</button>
-<button onclick="show('admin')">Owner Dashboard</button>
+
+<header>
+  <div class="container">
+    <div class="brand">⚡ REX SMART HUB</div>
+    <div class="sub">PAY SMALL SMALL • REXORA GROUP</div>
+  </div>
+</header>
+
+<main class="container">
+
+<!-- WELCOME -->
+<section id="welcome" class="panel">
+  <h1>Get it now. Pay small small.</h1>
+  <p class="lead">
+    Manage your installment payments securely from your phone.
+  </p>
+
+  <div class="buttons">
+    <button class="primary" onclick="showSection('login')">
+      Login
+    </button>
+
+    <button class="dark" onclick="showSection('signup')">
+      Create Account
+    </button>
+  </div>
+
+  <button class="linkBtn" onclick="showSection('ownerLogin')">
+    Owner Login
+  </button>
 </section>
 
-<section id="customer" class="hidden">
-<button class="back" onclick="show('home')">← Back</button>
-<h2>Customer Payment Page</h2><p>Enter the customer code given by REX SMART HUB.</p>
-<div class="lookup"><input id="code" placeholder="Example: REX001"><button class="primary" onclick="lookup()">View Payment</button></div>
-<div id="result"></div>
+
+<!-- CUSTOMER SIGNUP -->
+<section id="signup" class="panel hidden">
+  <button class="back" onclick="showSection('welcome')">← Back</button>
+
+  <h2>Create Customer Account</h2>
+
+  <form id="signupForm">
+
+    <label>Full Name
+      <input id="signupName" required placeholder="Full name">
+    </label>
+
+    <label>Nigerian Phone Number
+      <input id="signupPhone" required
+        placeholder="08012345678"
+        inputmode="tel">
+    </label>
+
+    <label>Email Address
+      <input id="signupEmail" required
+        type="email"
+        placeholder="you@example.com">
+    </label>
+
+    <label>Password
+      <input id="signupPassword" required
+        type="password"
+        minlength="8"
+        placeholder="Minimum 8 characters">
+    </label>
+
+    <label>Confirm Password
+      <input id="signupConfirm" required
+        type="password"
+        minlength="8"
+        placeholder="Repeat password">
+    </label>
+
+    <label>Address
+      <textarea id="signupAddress"
+        placeholder="Your address"></textarea>
+    </label>
+
+    <label class="check">
+      <input id="terms" type="checkbox" required>
+      I agree to the terms and conditions.
+    </label>
+
+    <button class="primary full" type="submit">
+      Create Account
+    </button>
+
+  </form>
+
+  <div id="signupMessage" class="message"></div>
 </section>
 
-<section id="admin" class="hidden">
-<button class="back" onclick="show('home')">← Back</button>
-<h2>Owner Dashboard</h2>
-<div class="stats"><div>Customers <b id="count">0</b></div><div>Collected <b id="collected">₦0</b></div><div>Outstanding <b id="outstanding">₦0</b></div></div>
-<div class="card"><h3>Add / Edit Customer</h3>
-<form id="form">
-<div class="grid">
-<label>Customer code<input id="fcode" required placeholder="REX001"></label>
-<label>Customer name<input id="fname" required></label>
-<label>Phone<input id="fphone"></label>
-<label>Product<input id="fproduct" required></label>
-<label>Total price (₦)<input id="ftotal" type="number" required></label>
-<label>Installment (₦)<input id="finstall" type="number"></label>
-<label>Frequency<select id="freq"><option>Monthly</option><option>Weekly</option><option>Bi-weekly</option><option>Custom</option></select></label>
-<label>Start date<input id="fstart" type="date"></label>
-</div>
-<label>Product image URL (optional)<input id="fimage" placeholder="https://..."></label>
-<label>Payment account details<textarea id="faccount" rows="3" placeholder="Bank: ...&#10;Account Name: ...&#10;Account Number: ..."></textarea></label>
-<label>Notes<textarea id="fnotes" rows="2"></textarea></label>
-<button class="primary">Save Customer</button> <button type="button" onclick="resetForm()">Clear</button>
-</form></div>
-<div class="card"><h3>Customers</h3><div id="list"></div></div>
+
+<!-- CUSTOMER LOGIN -->
+<section id="login" class="panel hidden">
+  <button class="back" onclick="showSection('welcome')">← Back</button>
+
+  <h2>Customer Login</h2>
+
+  <form id="loginForm">
+
+    <label>Email or Phone
+      <input id="loginIdentifier" required
+        placeholder="Email or phone number">
+    </label>
+
+    <label>Password
+      <input id="loginPassword" required
+        type="password"
+        placeholder="Password">
+    </label>
+
+    <button class="primary full" type="submit">
+      Login
+    </button>
+
+  </form>
+
+  <button class="linkBtn" onclick="showSection('forgot')">
+    Forgot Password?
+  </button>
+
+  <div id="loginMessage" class="message"></div>
 </section>
+
+
+<!-- OWNER LOGIN -->
+<section id="ownerLogin" class="panel hidden">
+  <button class="back" onclick="showSection('welcome')">← Back</button>
+
+  <h2>Owner Login</h2>
+  <p class="small">Private REX SMART HUB administration.</p>
+
+  <form id="ownerLoginForm">
+
+    <label>Email
+      <input id="ownerEmail" required
+        type="email"
+        placeholder="Owner email">
+    </label>
+
+    <label>Password
+      <input id="ownerPassword" required
+        type="password"
+        placeholder="Password">
+    </label>
+
+    <button class="dark full" type="submit">
+      Owner Login
+    </button>
+
+  </form>
+
+  <div id="ownerMessage" class="message"></div>
+</section>
+
+
+<!-- MFA -->
+<section id="mfa" class="panel hidden">
+  <h2>Security Verification</h2>
+
+  <p>
+    Enter the 6-digit code from your authenticator app.
+  </p>
+
+  <form id="mfaForm">
+
+    <label>6-Digit Security Code
+      <input id="mfaCode"
+        required
+        inputmode="numeric"
+        maxlength="6"
+        pattern="[0-9]{6}"
+        placeholder="000000">
+    </label>
+
+    <button class="primary full" type="submit">
+      Verify & Continue
+    </button>
+
+  </form>
+
+  <div id="mfaMessage" class="message"></div>
+</section>
+
+
+<!-- CUSTOMER DASHBOARD -->
+<section id="customerDashboard" class="hidden">
+
+  <div class="dashboardTop">
+    <div>
+      <h2>My Payment Dashboard</h2>
+      <p id="customerWelcome" class="small"></p>
+    </div>
+
+    <button class="dark" onclick="logout()">Logout</button>
+  </div>
+
+  <div id="customerAgreements"></div>
+
+</section>
+
+
+<!-- OWNER DASHBOARD -->
+<section id="ownerDashboard" class="hidden">
+
+  <div class="dashboardTop">
+    <div>
+      <h2>Owner Dashboard</h2>
+      <p class="small">REX SMART HUB — Pay Small Small</p>
+    </div>
+
+    <button class="dark" onclick="logout()">Logout</button>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="label">Customers</div>
+      <div id="statCustomers" class="value">0</div>
+    </div>
+
+    <div class="card">
+      <div class="label">Total Sales</div>
+      <div id="statSales" class="value">₦0</div>
+    </div>
+
+    <div class="card">
+      <div class="label">Collected</div>
+      <div id="statPaid" class="value">₦0</div>
+    </div>
+
+    <div class="card">
+      <div class="label">Outstanding</div>
+      <div id="statBalance" class="value">₦0</div>
+    </div>
+  </div>
+
+  <section class="panel">
+    <h3>Add Customer Agreement</h3>
+
+    <form id="agreementForm">
+
+      <label>Customer
+        <select id="agreementCustomer" required>
+          <option value="">Select customer</option>
+        </select>
+      </label>
+
+      <label>Product
+        <input id="agreementProduct" required
+          placeholder="Product / item">
+      </label>
+
+      <label>Product Image URL
+        <input id="agreementImage"
+          placeholder="Optional image URL">
+      </label>
+
+      <label>Total Price (₦)
+        <input id="agreementTotal"
+          type="number"
+          min="0"
+          required>
+      </label>
+
+      <label>Installment Amount (₦)
+        <input id="agreementInstallment"
+          type="number"
+          min="0"
+          required>
+      </label>
+
+      <label>Frequency
+        <select id="agreementFrequency">
+          <option>Weekly</option>
+          <option>Bi-weekly</option>
+          <option>Monthly</option>
+          <option>Custom</option>
+        </select>
+      </label>
+
+      <label>Start Date
+        <input id="agreementStart"
+          type="date">
+      </label>
+
+      <label>Payment Bank
+        <input id="paymentBank"
+          placeholder="Bank name">
+      </label>
+
+      <label>Account Name
+        <input id="paymentAccountName"
+          placeholder="Account name">
+      </label>
+
+      <label>Account Number
+        <input id="paymentAccountNumber"
+          inputmode="numeric"
+          placeholder="Account number">
+      </label>
+
+      <label>Notes
+        <textarea id="agreementNotes"
+          placeholder="Notes"></textarea>
+      </label>
+
+      <button class="primary full" type="submit">
+        Save Agreement
+      </button>
+
+    </form>
+
+    <div id="agreementMessage" class="message"></div>
+  </section>
+
+
+  <section class="panel">
+    <h3>Customers</h3>
+
+    <input id="ownerSearch"
+      placeholder="Search customers...">
+
+    <div id="ownerCustomers"></div>
+  </section>
+
+</section>
+
+
+<!-- FORGOT PASSWORD -->
+<section id="forgot" class="panel hidden">
+
+  <button class="back" onclick="showSection('login')">
+    ← Back
+  </button>
+
+  <h2>Reset Password</h2>
+
+  <form id="forgotForm">
+
+    <label>Email Address
+      <input id="forgotEmail"
+        type="email"
+        required
+        placeholder="you@example.com">
+    </label>
+
+    <button class="primary full" type="submit">
+      Send Reset Link
+    </button>
+
+  </form>
+
+  <div id="forgotMessage" class="message"></div>
+
+</section>
+
 </main>
-<footer>REXORA GROUP • REX SMART HUB • REX.DELECTRICALS ⚡ | One hub, many solutions.</footer>
+
+<footer>
+  REXORA GROUP • REX SMART HUB • REX.DELECTRICALS ⚡ | One hub, many solutions.
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="app.js"></script>
-</body></html>
+
+</body>
+</html>
