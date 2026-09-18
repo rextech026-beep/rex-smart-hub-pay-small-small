@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>REX SMART HUB — Pay Small Small</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><div><b>⚡ REX SMART HUB</b><small>PAY SMALL SMALL</small></div><button onclick="show('admin')">Owner Dashboard</button></header>
+<main>
+<section id="home">
+<p>REXORA GROUP</p><h1>Get it now.<br><span>Pay small small.</span></h1>
+<p class="lead">Check your product, payment progress and remaining balance from your payment page.</p>
+<button class="primary" onclick="show('customer')">Check My Payment</button>
+<button onclick="show('admin')">Owner Dashboard</button>
+</section>
+
+<section id="customer" class="hidden">
+<button class="back" onclick="show('home')">← Back</button>
+<h2>Customer Payment Page</h2><p>Enter the customer code given by REX SMART HUB.</p>
+<div class="lookup"><input id="code" placeholder="Example: REX001"><button class="primary" onclick="lookup()">View Payment</button></div>
+<div id="result"></div>
+</section>
+
+<section id="admin" class="hidden">
+<button class="back" onclick="show('home')">← Back</button>
+<h2>Owner Dashboard</h2>
+<div class="stats"><div>Customers <b id="count">0</b></div><div>Collected <b id="collected">₦0</b></div><div>Outstanding <b id="outstanding">₦0</b></div></div>
+<div class="card"><h3>Add / Edit Customer</h3>
+<form id="form">
+<div class="grid">
+<label>Customer code<input id="fcode" required placeholder="REX001"></label>
+<label>Customer name<input id="fname" required></label>
+<label>Phone<input id="fphone"></label>
+<label>Product<input id="fproduct" required></label>
+<label>Total price (₦)<input id="ftotal" type="number" required></label>
+<label>Installment (₦)<input id="finstall" type="number"></label>
+<label>Frequency<select id="freq"><option>Monthly</option><option>Weekly</option><option>Bi-weekly</option><option>Custom</option></select></label>
+<label>Start date<input id="fstart" type="date"></label>
+</div>
+<label>Product image URL (optional)<input id="fimage" placeholder="https://..."></label>
+<label>Payment account details<textarea id="faccount" rows="3" placeholder="Bank: ...&#10;Account Name: ...&#10;Account Number: ..."></textarea></label>
+<label>Notes<textarea id="fnotes" rows="2"></textarea></label>
+<button class="primary">Save Customer</button> <button type="button" onclick="resetForm()">Clear</button>
+</form></div>
+<div class="card"><h3>Customers</h3><div id="list"></div></div>
+</section>
+</main>
+<footer>REXORA GROUP • REX SMART HUB • REX.DELECTRICALS ⚡ | One hub, many solutions.</footer>
+<script src="app.js"></script>
+</body></html>
