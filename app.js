@@ -85,12 +85,14 @@ function section(id) {
 
 window.showSection = function(id) {
   document.querySelectorAll("section").forEach(s => {
+    s.classList.add("hidden");
     s.style.display = "none";
   });
 
   const target = section(id);
 
   if (target) {
+    target.classList.remove("hidden");
     target.style.display = "block";
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
